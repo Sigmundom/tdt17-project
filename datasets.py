@@ -11,17 +11,17 @@ from torch.utils.data import Dataset, DataLoader
 from custom_utils import collate_fn, get_train_transform, get_valid_transform
 # the dataset class
 class CustomDataset(Dataset):
-    def __init__(self, dir_path, width, height, classes, transforms=None):
+    def __init__(self, dir_path, width, height, classes, split=slice(None, None), transforms=None):
         self.transforms = transforms
         # self.dir_path = dir_path
         self.img_path = os.path.join(dir_path, 'images')
-        self.annot_path = os.path.join(dir_path, 'annotations')
+        self.annot_path = os.path.join(dir_path, 'annotations/xmls')
         self.height = height
         self.width = width
         self.classes = classes
         
         # get all the image paths in sorted order
-        self.image_paths = glob.glob(f"{self.img_path}/*.jpg")
+        self.image_paths = glob.glob(f"{self.img_path}/*.jpg")[split]
         self.all_images = [image_path.split(os.path.sep)[-1] for image_path in self.image_paths]
         self.all_images = sorted(self.all_images)
     
@@ -74,9 +74,9 @@ class CustomDataset(Dataset):
             boxes.append([xmin_final, ymin_final, xmax_final, yamx_final])
         
         # bounding box to tensor
-        boxes = torch.as_tensor(boxes, dtype=torch.float32)
+        boxes = torch.as_tensor(boxes, dtype=torch.float32).reshape(-1,4)
         # area of the bounding boxes
-        area = (boxes[:, 3] - boxes[:, 1]) * (boxes[:, 2] - boxes[:, 0]) if len(boxes) > 0 else torch.tensor([])
+        area = (boxes[:, 3] - boxes[:, 1]) * (boxes[:, 2] - boxes[:, 0])
         # no crowd instances
         iscrowd = torch.zeros((boxes.shape[0],), dtype=torch.int64)
         # labels to tensor
@@ -95,18 +95,20 @@ class CustomDataset(Dataset):
                                      bboxes = target['boxes'],
                                      labels = labels)
             image_resized = sample['image']
-            target['boxes'] = torch.Tensor(sample['bboxes'])
+            target['boxes'] = torch.Tensor(sample['bboxes']).reshape(-1,4)
             
         return image_resized, target
     def __len__(self):
         return len(self.all_images)
 # prepare the final datasets and data loaders
 def create_train_dataset():
-    train_dataset = CustomDataset(TRAIN_DIR, IM_WIDTH, IM_HEIGHT, CLASSES, get_train_transform())
+    train_dataset = CustomDataset(TRAIN_DIR, IM_WIDTH, IM_HEIGHT, CLASSES,  slice(40, 360),get_train_transform())
+    # train_dataset = CustomDataset(TRAIN_DIR, IM_WIDTH, IM_HEIGHT, CLASSES,  slice(816, None),get_train_transform())
     return train_dataset
 
 def create_valid_dataset():
-    valid_dataset = CustomDataset(VALID_DIR, IM_WIDTH, IM_HEIGHT, CLASSES, get_valid_transform())
+    valid_dataset = CustomDataset(VALID_DIR, IM_WIDTH, IM_HEIGHT, CLASSES, slice(0, 40), get_valid_transform())
+    # valid_dataset = CustomDataset(VALID_DIR, IM_WIDTH, IM_HEIGHT, CLASSES, slice(0, 816), get_valid_transform())
     return valid_dataset
 
 def create_train_loader(train_dataset, num_workers=0):

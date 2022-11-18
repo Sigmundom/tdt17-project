@@ -1,3 +1,7 @@
 data/
 .vscode/
 __pycache__/
+outputs/
+
+job.slurm
+test-srun.out

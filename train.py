@@ -3,16 +3,17 @@ from config import (
     VISUALIZE_TRANSFORMED_IMAGES, NUM_WORKERS,
 )
 from model import create_model
-from custom_utils import Averager, SaveBestModel, save_model, save_loss_plot
+from custom_utils import Averager, SaveBestModel, save_model#, save_loss_plot
 from tqdm.auto import tqdm
 from datasets import (
     create_train_dataset, create_valid_dataset, 
     create_train_loader, create_valid_loader
 )
 import torch
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import time
-plt.style.use('ggplot')
+from os import getcwd, path, makedirs
+# plt.style.use('ggplot')
 
 
 # function for running training iterations
@@ -70,6 +71,10 @@ def validate(valid_data_loader, model):
     return val_loss_list
 
 if __name__ == '__main__':
+    print('Working directory:', getcwd())
+    print('CUDA:', torch.cuda.is_available())
+    if not torch.cuda.is_available():
+        exit()
     train_dataset = create_train_dataset()
     valid_dataset = create_valid_dataset()
     train_loader = create_train_loader(train_dataset, NUM_WORKERS)
@@ -95,9 +100,12 @@ if __name__ == '__main__':
     # name to save the trained model with
     MODEL_NAME = 'model'
     # whether to show transformed images from data loader or not
-    if VISUALIZE_TRANSFORMED_IMAGES:
-        from custom_utils import show_tranformed_image
-        show_tranformed_image(train_loader)
+    # if VISUALIZE_TRANSFORMED_IMAGES:
+    #     from custom_utils import show_tranformed_image
+    #     show_tranformed_image(train_loader)
+    
+    if not path.isdir(OUT_DIR):
+        makedirs(OUT_DIR)
     # initialize SaveBestModel class
     save_best_model = SaveBestModel()
     # start the training epochs
@@ -122,7 +130,7 @@ if __name__ == '__main__':
         # save the current epoch model
         save_model(epoch, model, optimizer)
         # save loss plot
-        save_loss_plot(OUT_DIR, train_loss, val_loss)
+        # save_loss_plot(OUT_DIR, train_loss, val_loss)
         
         # sleep for 5 seconds after each epoch
         time.sleep(5)
