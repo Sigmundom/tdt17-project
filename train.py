@@ -2,6 +2,7 @@ from config import (
     DEVICE, NUM_CLASSES, NUM_EPOCHS, OUT_DIR,
     VISUALIZE_TRANSFORMED_IMAGES, NUM_WORKERS,
 )
+from evaluate import evaluate
 from model import create_model
 from custom_utils import Averager, SaveBestModel, save_model#, save_loss_plot
 from tqdm.auto import tqdm
@@ -73,8 +74,8 @@ def validate(valid_data_loader, model):
 if __name__ == '__main__':
     print('Working directory:', getcwd())
     print('CUDA:', torch.cuda.is_available())
-    if not torch.cuda.is_available():
-        exit()
+    # if not torch.cuda.is_available():
+    #     exit()
     train_dataset = create_train_dataset()
     valid_dataset = create_valid_dataset()
     train_loader = create_train_loader(train_dataset, NUM_WORKERS)
@@ -118,6 +119,7 @@ if __name__ == '__main__':
         start = time.time()
         train_loss = train(train_loader, model)
         val_loss = validate(valid_loader, model)
+        stats = evaluate(model, valid_loader)
         print(f"Epoch #{epoch+1} train loss: {train_loss_hist.value:.3f}")   
         print(f"Epoch #{epoch+1} validation loss: {val_loss_hist.value:.3f}")   
         end = time.time()

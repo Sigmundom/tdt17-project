@@ -1,4 +1,5 @@
 import torchvision
+# from torchvision.models.detection.faster_rcnn import FastRCNNPredictor, FasterRCNN_MobileNet_V3_Large_FPN_Weights
 from torchvision.models.detection.faster_rcnn import FastRCNNPredictor, FasterRCNN_ResNet50_FPN_Weights
 def create_model(num_classes):
     
@@ -10,3 +11,7 @@ def create_model(num_classes):
     # define a new head for the detector with required number of classes
     model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes) 
     return model
+
+if __name__=='__main__':
+    model = create_model(4)
+    model.eval()

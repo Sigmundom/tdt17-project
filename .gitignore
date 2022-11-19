@@ -2,6 +2,7 @@ data/
 .vscode/
 __pycache__/
 outputs/
+inference_output/
 
 job.slurm
 test-srun.out

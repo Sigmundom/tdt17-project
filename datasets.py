@@ -102,12 +102,12 @@ class CustomDataset(Dataset):
         return len(self.all_images)
 # prepare the final datasets and data loaders
 def create_train_dataset():
-    train_dataset = CustomDataset(TRAIN_DIR, IM_WIDTH, IM_HEIGHT, CLASSES,  slice(40, 360),get_train_transform())
+    train_dataset = CustomDataset(TRAIN_DIR, IM_WIDTH, IM_HEIGHT, CLASSES,  slice(3, 10),get_train_transform())
     # train_dataset = CustomDataset(TRAIN_DIR, IM_WIDTH, IM_HEIGHT, CLASSES,  slice(816, None),get_train_transform())
     return train_dataset
 
 def create_valid_dataset():
-    valid_dataset = CustomDataset(VALID_DIR, IM_WIDTH, IM_HEIGHT, CLASSES, slice(0, 40), get_valid_transform())
+    valid_dataset = CustomDataset(VALID_DIR, IM_WIDTH, IM_HEIGHT, CLASSES, slice(0, 3), get_valid_transform())
     # valid_dataset = CustomDataset(VALID_DIR, IM_WIDTH, IM_HEIGHT, CLASSES, slice(0, 816), get_valid_transform())
     return valid_dataset
 
