@@ -91,6 +91,7 @@ class CustomDataset(Dataset):
         target["area"] = area
         target["iscrowd"] = iscrowd
         target["image_id"] = torch.tensor(idx)
+        target["im_shape"] = image.shape[:2]
         # apply the image transforms
         if self.transforms:
             sample = self.transforms(image = image_resized,
@@ -139,7 +140,8 @@ class CustomDataset(Dataset):
 # prepare the final datasets and data loaders
 def create_train_dataset():
     # train_dataset = CustomDataset(TRAIN_DIR, IM_WIDTH, IM_HEIGHT, CLASSES,  slice(50, 250),get_train_transform())
-    train_dataset = CustomDataset(TRAIN_DIR, IM_WIDTH, IM_HEIGHT, CLASSES,  slice(816, None),get_train_transform())
+    # train_dataset = CustomDataset(TRAIN_DIR, IM_WIDTH, IM_HEIGHT, CLASSES,  slice(816, None),get_train_transform())
+    train_dataset = CustomDataset(TRAIN_DIR, IM_WIDTH, IM_HEIGHT, CLASSES,  slice(0, None),get_train_transform())
     return train_dataset
 
 def create_valid_dataset():
@@ -157,10 +159,10 @@ def create_train_loader(train_dataset, num_workers=0):
     )
     return train_loader
 
-def create_valid_loader(valid_dataset, num_workers=0):
+def create_valid_loader(valid_dataset, num_workers=0, batch_size=None):
     valid_loader = DataLoader(
         valid_dataset,
-        batch_size=BATCH_SIZE,
+        batch_size=BATCH_SIZE if batch_size is None else batch_size,
         shuffle=False,
         num_workers=num_workers,
         collate_fn=collate_fn
