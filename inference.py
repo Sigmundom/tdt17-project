@@ -3,9 +3,8 @@ import cv2
 import torch
 import glob as glob
 import os
-import time
 from model import create_model
-from config import NUM_CLASSES, DEVICE
+from config import IM_HEIGHT, IM_WIDTH, NUM_CLASSES, DEVICE
 from utils import apply_nms
 
 
@@ -33,6 +32,7 @@ for i in range(len(test_images)):
     image = cv2.imread(test_images[i])
     # BGR to RGB
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32)
+    image = cv2.resize(image, (IM_WIDTH, IM_HEIGHT))
     # make the pixel range between 0 and 1
     image /= 255.0
     # bring color channels to front
