@@ -4,7 +4,7 @@ from config import (
 )
 from evaluate import evaluate
 from model import create_model
-from custom_utils import Averager, SaveBestModel, save_model#, save_loss_plot
+from custom_utils import Averager, SaveBestModel, get_valid_transform, save_model#, save_loss_plot
 from tqdm.auto import tqdm
 from datasets import (
     create_train_dataset, create_valid_dataset, 
@@ -24,13 +24,14 @@ def train(train_data_loader, model):
     global train_loss_list
     
      # initialize tqdm progress bar
-    prog_bar = tqdm(train_data_loader, total=len(train_data_loader))
+    prog_bar = tqdm(train_data_loader, total=len(train_data_loader), miniters=(len(train_data_loader)//100))
     
     for i, data in enumerate(prog_bar):
         optimizer.zero_grad()
         images, targets = data
         
         images = list(image.to(DEVICE) for image in images)
+        
         targets = [{k: v.to(DEVICE) for k, v in t.items()} for t in targets]
         loss_dict = model(images, targets)
         losses = sum(loss for loss in loss_dict.values())
@@ -42,7 +43,7 @@ def train(train_data_loader, model):
         train_itr += 1
     
         # update the loss value beside the progress bar for each iteration
-        prog_bar.set_description(desc=f"Loss: {loss_value:.4f}")
+        # prog_bar.set_description(desc=f"Loss: {loss_value:.4f}")
     return train_loss_list
 
     # function for running validation iterations
@@ -74,8 +75,7 @@ def validate(valid_data_loader, model):
 if __name__ == '__main__':
     print('Working directory:', getcwd())
     print('CUDA:', torch.cuda.is_available())
-    # if not torch.cuda.is_available():
-    #     exit()
+
     train_dataset = create_train_dataset()
     valid_dataset = create_valid_dataset()
     train_loader = create_train_loader(train_dataset, NUM_WORKERS)
@@ -84,7 +84,9 @@ if __name__ == '__main__':
     print(f"Number of validation samples: {len(valid_dataset)}\n")
     # initialize the model and move to the computation device
     model = create_model(num_classes=NUM_CLASSES)
-    model = model.to(DEVICE)
+    checkpoint = torch.load('outputs/last_model.pth', map_location=DEVICE)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    model.to(DEVICE)
     # get the model parameters
     params = [p for p in model.parameters() if p.requires_grad]
     # define the optimizer
@@ -109,8 +111,9 @@ if __name__ == '__main__':
         makedirs(OUT_DIR)
     # initialize SaveBestModel class
     save_best_model = SaveBestModel()
+    
     # start the training epochs
-    for epoch in range(NUM_EPOCHS):
+    for epoch in range(checkpoint['epoch'], NUM_EPOCHS):
         print(f"\nEPOCH {epoch+1} of {NUM_EPOCHS}")
         # reset the training and validation loss histories for the current epoch
         train_loss_hist.reset()
@@ -118,8 +121,8 @@ if __name__ == '__main__':
         # start timer and carry out training and validation
         start = time.time()
         train_loss = train(train_loader, model)
-        val_loss = validate(valid_loader, model)
-        stats = evaluate(model, valid_loader)
+        # val_loss = validate(valid_loader, model)
+        stats = evaluate(model, valid_loader, valid_loader.dataset.get_annotations_as_coco())
         print(f"Epoch #{epoch+1} train loss: {train_loss_hist.value:.3f}")   
         print(f"Epoch #{epoch+1} validation loss: {val_loss_hist.value:.3f}")   
         end = time.time()

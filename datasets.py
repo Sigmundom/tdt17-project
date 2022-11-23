@@ -1,9 +1,11 @@
+from bbox_utils import bbox_ltrb_to_ltwh
 import torch
 import cv2
 import numpy as np
 import os
 import glob as glob
 from xml.etree import ElementTree as et
+from pycocotools.coco import COCO
 from config import (
     CLASSES, IM_WIDTH, IM_HEIGHT, TRAIN_DIR, VALID_DIR, BATCH_SIZE
 )
@@ -85,10 +87,10 @@ class CustomDataset(Dataset):
         target = {}
         target["boxes"] = boxes
         target["labels"] = labels
+        # print(labels)
         target["area"] = area
         target["iscrowd"] = iscrowd
-        image_id = torch.tensor([idx])
-        target["image_id"] = image_id
+        target["image_id"] = torch.tensor(idx)
         # apply the image transforms
         if self.transforms:
             sample = self.transforms(image = image_resized,
@@ -98,17 +100,51 @@ class CustomDataset(Dataset):
             target['boxes'] = torch.Tensor(sample['bboxes']).reshape(-1,4)
             
         return image_resized, target
+
+    def get_annotations_as_coco(self) -> COCO:
+        """
+            Returns bounding box annotations in COCO dataset format
+        """
+        coco_anns = {"annotations" : [], "images" : [], "licences" : [{"name": "", "id": 0, "url": ""}], "categories" : []}
+        coco_anns["categories"] = [
+            {"name": cat, "id": i+1, "supercategory": ""}
+            for i, cat in enumerate(CLASSES) 
+        ]
+        ann_id = 1
+        for idx in range(len(self)):
+            # image_id = idx
+            _, target = self.__getitem__(idx)
+            boxes_ltrb  = target['boxes']
+            boxes_ltwh = bbox_ltrb_to_ltwh(boxes_ltrb)
+            coco_anns["images"].append({"id": int(target['image_id']), "height": self.height, "width": self.width })
+            for box, label in zip(boxes_ltwh, target['labels']):
+                box = box.tolist()
+                area = box[-1] * box[-2]
+                coco_anns["annotations"].append({
+                    "bbox": box, "area": area, "category_id": int(label),
+                    "image_id": int(target['image_id']), "id": ann_id, "iscrowd": 0, "segmentation": []}
+                )
+                ann_id += 1
+        coco_anns["annotations"].sort(key=lambda x: x["image_id"])
+        coco_anns["images"].sort(key=lambda x: x["id"])
+        # print(coco_anns["annotations"])
+        coco = COCO()
+        coco.dataset = coco_anns
+        coco.createIndex()
+        coco.getAnnIds()
+        return coco
+
     def __len__(self):
         return len(self.all_images)
 # prepare the final datasets and data loaders
 def create_train_dataset():
-    train_dataset = CustomDataset(TRAIN_DIR, IM_WIDTH, IM_HEIGHT, CLASSES,  slice(3, 10),get_train_transform())
-    # train_dataset = CustomDataset(TRAIN_DIR, IM_WIDTH, IM_HEIGHT, CLASSES,  slice(816, None),get_train_transform())
+    # train_dataset = CustomDataset(TRAIN_DIR, IM_WIDTH, IM_HEIGHT, CLASSES,  slice(50, 250),get_train_transform())
+    train_dataset = CustomDataset(TRAIN_DIR, IM_WIDTH, IM_HEIGHT, CLASSES,  slice(816, None),get_train_transform())
     return train_dataset
 
 def create_valid_dataset():
-    valid_dataset = CustomDataset(VALID_DIR, IM_WIDTH, IM_HEIGHT, CLASSES, slice(0, 3), get_valid_transform())
-    # valid_dataset = CustomDataset(VALID_DIR, IM_WIDTH, IM_HEIGHT, CLASSES, slice(0, 816), get_valid_transform())
+    # valid_dataset = CustomDataset(VALID_DIR, IM_WIDTH, IM_HEIGHT, CLASSES, slice(0, 50), get_valid_transform())
+    valid_dataset = CustomDataset(VALID_DIR, IM_WIDTH, IM_HEIGHT, CLASSES, slice(0, 816), get_valid_transform())
     return valid_dataset
 
 def create_train_loader(train_dataset, num_workers=0):

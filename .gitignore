@@ -6,3 +6,5 @@ inference_output/
 
 job.slurm
 test-srun.out
+inference.out
+train.out

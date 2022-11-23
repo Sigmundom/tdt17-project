@@ -6,6 +6,7 @@ import os
 import time
 from model import create_model
 from config import NUM_CLASSES, DEVICE
+from utils import apply_nms
 
 
 
@@ -15,12 +16,13 @@ checkpoint = torch.load('outputs/best_model.pth', map_location=DEVICE)
 model.load_state_dict(checkpoint['model_state_dict'])
 model.to(DEVICE).eval()
 # directory where all the images are present
-DIR_TEST = 'data/test/validation/images'
-test_images = glob.glob(f"{DIR_TEST}/*.jpg")
+# DIR_TEST = 'data/test/validation/images'
+DIR_TEST = '/cluster/projects/vc/courses/TDT17/2022/open/RDD2022/Norway/train/images'
+test_images = glob.glob(f"{DIR_TEST}/*.jpg")[:50]
 print(f"Test instances: {len(test_images)}")
 # define the detection threshold...
 # ... any detection having score below this will be discarded
-detection_threshold = 0.07
+detection_threshold = 0.05
 
 pred_strings = []
 for i in range(len(test_images)):
@@ -41,7 +43,10 @@ for i in range(len(test_images)):
     with torch.no_grad():
         outputs = model(image.to(DEVICE))
     # load all detection to CPU for further operations
+        
+    outputs = [apply_nms(output, 0.3) for output in outputs]
     outputs = [{k: v.to('cpu') for k, v in t.items()} for t in outputs]
+    print(outputs)
     # carry further only if there are detected boxes
     if len(outputs[0]['boxes']) != 0:
         boxes = outputs[0]['boxes'].data.numpy()

@@ -1,9 +1,12 @@
+from config import DEVICE, IM_HEIGHT, IM_WIDTH
 import torch
+import torchvision
 import tqdm
 import numpy as np
 from bbox_utils import bbox_ltrb_to_ltwh
 from pycocotools.cocoeval import COCOeval
 from pycocotools.coco import COCO
+from utils import apply_nms
 
 def get_device() -> torch.device:
     return torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -24,38 +27,44 @@ def to_cuda(elements):
 def evaluate(
         model,
         dataloader: torch.utils.data.DataLoader,
-        cocoGt: COCO,
-        gpu_transform: torch.nn.Module):
+        cocoGt: COCO):
     """
         Evaluates over dataloader and returns COCO stats
     """
     model.eval()
     ret = []
-    for batch in tqdm.tqdm(dataloader, desc="Evaluating on dataset"):
-        batch["image"] = to_cuda(batch["image"])
-        batch = gpu_transform(batch)
+    for images, targets in tqdm.tqdm(dataloader, desc="Evaluating on dataset"):
+        images = list(image.to(DEVICE) for image in images)
+        # targets = [{k: v.to(DEVICE) for k, v in t.items()} for t in targets]
         with torch.cuda.amp.autocast(enabled=True):
-            predictions = model(batch["image"], nms_iou_threshold=0.50, max_output=200,
-                score_threshold=0.05)
-
-        for idx in range(len(predictions)):
-            boxes_ltrb, categories, scores = predictions[idx]
+            predictions = model(images)
+            # , nms_iou_threshold=0.50, max_output=200, score_threshold=0.05)
+        # predictions = [apply_nms(prediction, 0.5) for prediction in predictions]
+        for prediction, target in zip(predictions, targets):
+            # print('Prediction:', prediction)
+            prediction = apply_nms(prediction, 0.3)
+            # print('Prediction after nms:', prediction)
+            boxes_ltrb = prediction['boxes']
+            categories = prediction['labels']
+            scores = prediction['scores']
             # ease-of-use for specific predictions
-            H, W = batch["height"][idx], batch["width"][idx]
+            # H, W = targets["height"][idx], targets["width"][idx]
             box_ltwh = bbox_ltrb_to_ltwh(boxes_ltrb)
-            box_ltwh[:, [0, 2]] *= W
-            box_ltwh[:, [1, 3]] *= H
+            # box_ltwh[:, [0, 2]] *= IM_WIDTH
+            # box_ltwh[:, [1, 3]] *= IM_HEIGHT
             box_ltwh, category, score = [x.cpu() for x in [box_ltwh, categories, scores]]
-            img_id = batch["image_id"][idx].item()
+            img_id = target["image_id"]
             for b_ltwh, label_, prob_ in zip(box_ltwh, category, score):
                 #TODO! Have to make sure that label_ matches COCO label
                 ret.append([img_id, *b_ltwh.tolist(), prob_.item(),
                             int(label_)])
+            # print('Targets:', targets)
     model.train()
     final_results = np.array(ret).astype(np.float32)
     if final_results.shape[0] == 0:
         print("WARNING! There were no predictions with score > 0.05. This indicates a bug in your code.")
         return dict()
+    
     cocoDt = cocoGt.loadRes(final_results)
     E = COCOeval(cocoGt, cocoDt, iouType='bbox')
     E.evaluate()
