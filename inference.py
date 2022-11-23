@@ -18,7 +18,8 @@ model.to(DEVICE).eval()
 # directory where all the images are present
 # DIR_TEST = 'data/test/validation/images'
 DIR_TEST = '/cluster/projects/vc/courses/TDT17/2022/open/RDD2022/Norway/train/images'
-test_images = glob.glob(f"{DIR_TEST}/*.jpg")[:50]
+# test_images = glob.glob(f"{DIR_TEST}/*.jpg")[:50]
+test_images = [f'{DIR_TEST}/Norway_0000{str(i).zfill(2)}.jpg' for i in range(6,51)]
 print(f"Test instances: {len(test_images)}")
 # define the detection threshold...
 # ... any detection having score below this will be discarded
