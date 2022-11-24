@@ -39,26 +39,19 @@ def evaluate(
         with torch.cuda.amp.autocast(enabled=True):
             predictions = model(images)
             # , nms_iou_threshold=0.50, max_output=200, score_threshold=0.05)
-        # predictions = [apply_nms(prediction, 0.5) for prediction in predictions]
         for prediction, target in zip(predictions, targets):
-            # print('Prediction:', prediction)
             prediction = apply_nms(prediction, 0.3)
-            # print('Prediction after nms:', prediction)
             boxes_ltrb = prediction['boxes']
             categories = prediction['labels']
             scores = prediction['scores']
             # ease-of-use for specific predictions
-            # H, W = targets["height"][idx], targets["width"][idx]
             box_ltwh = bbox_ltrb_to_ltwh(boxes_ltrb)
-            # box_ltwh[:, [0, 2]] *= IM_WIDTH
-            # box_ltwh[:, [1, 3]] *= IM_HEIGHT
             box_ltwh, category, score = [x.cpu() for x in [box_ltwh, categories, scores]]
             img_id = target["image_id"]
             for b_ltwh, label_, prob_ in zip(box_ltwh, category, score):
                 #TODO! Have to make sure that label_ matches COCO label
                 ret.append([img_id, *b_ltwh.tolist(), prob_.item(),
                             int(label_)])
-            # print('Targets:', targets)
     model.train()
     final_results = np.array(ret).astype(np.float32)
     if final_results.shape[0] == 0:
@@ -70,8 +63,11 @@ def evaluate(
     E.evaluate()
     E.accumulate()
     E.summarize()
+
+    f1 = 2 * (E.stats[0]*E.stats[8]) / (E.stats[0]+E.stats[8])
     
     stats = {
+        "F1": f1,
         "mAP": E.stats[0], # same as mAP@
         "mAP@0.5": E.stats[1], # Same as PASCAL VOC mAP
         "mAP@0.75": E.stats[2],

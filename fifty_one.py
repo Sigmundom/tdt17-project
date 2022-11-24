@@ -5,6 +5,7 @@ from config import IM_HEIGHT as h, IM_WIDTH as w, CLASSES
 name = "my-dataset"
 # The directory containing the dataset to import
 dataset_dir = "data/test/train"
+# dataset_dir = "data/test/validation"
 # The type of the dataset being imported
 dataset_type = fo.types.VOCDetectionDataset 
 

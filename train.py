@@ -124,7 +124,7 @@ if __name__ == '__main__':
         # val_loss = validate(valid_loader, model)
         stats = evaluate(model, valid_loader, valid_loader.dataset.get_annotations_as_coco())
         print(f"Epoch #{epoch+1} train loss: {train_loss_hist.value:.3f}")   
-        print(f"Epoch #{epoch+1} validation loss: {val_loss_hist.value:.3f}")   
+        # print(f"Epoch #{epoch+1} validation loss: {val_loss_hist.value:.3f}")   
         end = time.time()
         print(f"Took {((end - start) / 60):.3f} minutes for epoch {epoch}")
         # save the best model till now if we have the least loss in the...

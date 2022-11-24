@@ -7,7 +7,7 @@ import glob as glob
 from xml.etree import ElementTree as et
 from pycocotools.coco import COCO
 from config import (
-    CLASSES, IM_WIDTH, IM_HEIGHT, TRAIN_DIR, VALID_DIR, BATCH_SIZE
+    CLASSES, DATA_BLACKLIST, IM_WIDTH, IM_HEIGHT, TRAIN_DIR, VALID_DIR, BATCH_SIZE
 )
 from torch.utils.data import Dataset, DataLoader
 from custom_utils import collate_fn, get_train_transform, get_valid_transform
@@ -25,6 +25,14 @@ class CustomDataset(Dataset):
         # get all the image paths in sorted order
         self.image_paths = glob.glob(f"{self.img_path}/*.jpg")[split]
         self.all_images = [image_path.split(os.path.sep)[-1] for image_path in self.image_paths]
+        
+        for item in DATA_BLACKLIST:
+            try:
+                self.all_images.remove(item)
+                print('Removed blacklisted item:', item)
+            except ValueError:
+                print(f"Tried to remove {item}, but couldn't find it")
+
         self.all_images = sorted(self.all_images)
     
     def __getitem__(self, idx):
@@ -35,7 +43,9 @@ class CustomDataset(Dataset):
         image = cv2.imread(image_path)
         # convert BGR to RGB color format
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32)
-        image_resized = cv2.resize(image, (self.width, self.height))
+        y_crop = int(image.shape[0]*0.4)
+        image_cropped = image[y_crop:, :]
+        image_resized = cv2.resize(image_cropped, (self.width, self.height))
         image_resized /= 255.0
         
         # capture the corresponding XML file for getting the annotations
@@ -62,9 +72,9 @@ class CustomDataset(Dataset):
             # xmax = right corner x-coordinates
             xmax = float(member.find('bndbox').find('xmax').text)
             # ymin = left corner y-coordinates
-            ymin = float(member.find('bndbox').find('ymin').text)
+            ymin = float(member.find('bndbox').find('ymin').text) - y_crop
             # ymax = right corner y-coordinates
-            ymax = float(member.find('bndbox').find('ymax').text)
+            ymax = float(member.find('bndbox').find('ymax').text) - y_crop
             
             # resize the bounding boxes according to the...
             # ... desired `width`, `height`
@@ -92,6 +102,7 @@ class CustomDataset(Dataset):
         target["iscrowd"] = iscrowd
         target["image_id"] = torch.tensor(idx)
         target["im_shape"] = image.shape[:2]
+        target["y_crop"] = y_crop
         # apply the image transforms
         if self.transforms:
             sample = self.transforms(image = image_resized,
@@ -128,7 +139,6 @@ class CustomDataset(Dataset):
                 ann_id += 1
         coco_anns["annotations"].sort(key=lambda x: x["image_id"])
         coco_anns["images"].sort(key=lambda x: x["id"])
-        # print(coco_anns["annotations"])
         coco = COCO()
         coco.dataset = coco_anns
         coco.createIndex()
