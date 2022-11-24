@@ -1,9 +1,9 @@
 #!/bin/sh
 #SBATCH --partition=GPUQ
 #SBATCH --account=ie-idi
-#SBATCH --time=07:00:00
+#SBATCH --time=06:00:00
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1
+#SBATCH --ntasks-per-node=8
 #SBATCH --mem=12000
 #SBATCH --job-name="train"
 #SBATCH --output=train.out

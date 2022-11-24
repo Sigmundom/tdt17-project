@@ -59,7 +59,7 @@ class CustomDataset(Dataset):
         
         # get the height and width of the image
         image_width = image.shape[1]
-        image_height = image.shape[0]
+        image_height = image.shape[0] - y_crop
         
         # box coordinates for xml files are extracted and corrected for image size given
         for member in root.findall('object'):
@@ -81,9 +81,9 @@ class CustomDataset(Dataset):
             xmin_final = (xmin/image_width)*self.width
             xmax_final = (xmax/image_width)*self.width
             ymin_final = (ymin/image_height)*self.height
-            yamx_final = (ymax/image_height)*self.height
+            ymax_final = (ymax/image_height)*self.height
             
-            boxes.append([xmin_final, ymin_final, xmax_final, yamx_final])
+            boxes.append([xmin_final, ymin_final, xmax_final, ymax_final])
         
         # bounding box to tensor
         boxes = torch.as_tensor(boxes, dtype=torch.float32).reshape(-1,4)
@@ -101,8 +101,8 @@ class CustomDataset(Dataset):
         target["area"] = area
         target["iscrowd"] = iscrowd
         target["image_id"] = torch.tensor(idx)
-        target["im_shape"] = image.shape[:2]
-        target["y_crop"] = y_crop
+        # target["im_shape"] = image.shape[:2]
+        # target["y_crop"] = y_crop
         # apply the image transforms
         if self.transforms:
             sample = self.transforms(image = image_resized,
@@ -150,8 +150,8 @@ class CustomDataset(Dataset):
 # prepare the final datasets and data loaders
 def create_train_dataset():
     # train_dataset = CustomDataset(TRAIN_DIR, IM_WIDTH, IM_HEIGHT, CLASSES,  slice(50, 250),get_train_transform())
-    # train_dataset = CustomDataset(TRAIN_DIR, IM_WIDTH, IM_HEIGHT, CLASSES,  slice(816, None),get_train_transform())
-    train_dataset = CustomDataset(TRAIN_DIR, IM_WIDTH, IM_HEIGHT, CLASSES,  slice(0, None),get_train_transform())
+    train_dataset = CustomDataset(TRAIN_DIR, IM_WIDTH, IM_HEIGHT, CLASSES,  slice(816, None),get_train_transform())
+    # train_dataset = CustomDataset(TRAIN_DIR, IM_WIDTH, IM_HEIGHT, CLASSES,  slice(0, None),get_train_transform())
     return train_dataset
 
 def create_valid_dataset():
