@@ -1,6 +1,9 @@
 
 
 import glob
+import cv2
+
+import numpy as np
 from config import CLASSES, IM_HEIGHT, VALID_DIR
 from xml.etree import ElementTree as et
 
@@ -52,6 +55,8 @@ def _explore_placement(loader):
             if t < 0.5:
                 top_50 += 1
                 if t < 0.4:
+                    print('TOP40!!')
+                    print(target['id'])
                     top_40 += 1
 
     print('Top:', min_y)
@@ -113,6 +118,7 @@ def explore():
         target = {}
         target["boxes"] = boxes
         target["labels"] = labels
+        target['id'] = annot_file_path.split('/')[-1]
 
         target["im_shape"] = (image_height, image_width)
 
@@ -125,6 +131,64 @@ def explore():
     _explore_classes(annotations)
 
 
+def explore_testdata():    
+    resolutions = dict()
+
+    for filename in glob.glob("/cluster/projects/vc/courses/TDT17/2022/open/RDD2022/Norway/test/images/*.jpg"):
+        with open(filename,'rb') as img_file: # open image in binary mode
+            # height of image is at 164th position
+            img_file.seek(163)
+            # read the two bytes 
+            a = img_file.read(2)
+            # calculate height
+            height = (a[0] << 8) + a[1]
+            # read next two bytes which stores the width
+            a = img_file.read(2)
+            # calculate width
+            width = (a[0] << 8 ) + a[1]
+            res = f'{width}x{height}'
+            if res in resolutions:
+                resolutions[res] += 1
+            else:
+                resolutions[res] = 1
+
+    print(resolutions)
+
+def explore_image_std():
+    files = glob.glob("/cluster/projects/vc/courses/TDT17/2022/open/RDD2022/Norway/train/images/*.jpg")
+
+    print(len(files))
+    
+    mean = np.array([0.,0.,0.])
+    stdTemp = np.array([0.,0.,0.])
+    std = np.array([0.,0.,0.])
+    
+    numSamples = len(files)
+    
+    for i in range(numSamples):
+        im = cv2.imread(str(files[i]))
+        im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+        im = im.astype(float) / 255.
+        
+        for j in range(3):
+            mean[j] += np.mean(im[:,:,j])
+
+    mean = (mean/numSamples)
+    
+    print('Mean:', mean) 
+
+    for i in range(numSamples):
+        im = cv2.imread(str(files[i]))
+        im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+        im = im.astype(float) / 255.
+        for j in range(3):
+            stdTemp[j] += ((im[:,:,j] - mean[j])**2).sum()/(im.shape[0]*im.shape[1])
+
+    std = np.sqrt(stdTemp/numSamples)
+
+    print('Std:', std) 
 
 if __name__ == '__main__':
-    explore()
+    # explore_testdata()
+    explore_image_std()
+    # explore()
