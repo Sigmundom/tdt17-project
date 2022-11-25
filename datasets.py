@@ -7,19 +7,19 @@ import glob as glob
 from xml.etree import ElementTree as et
 from pycocotools.coco import COCO
 from config import (
-    CLASSES, DATA_BLACKLIST, IM_WIDTH, IM_HEIGHT, TRAIN_DIR, VALID_DIR, BATCH_SIZE
+    CLASSES, DATA_BLACKLIST, TRAIN_DIR, VALID_DIR, BATCH_SIZE
 )
 from torch.utils.data import Dataset, DataLoader
 from custom_utils import collate_fn, get_train_transform, get_valid_transform
 # the dataset class
 class CustomDataset(Dataset):
-    def __init__(self, dir_path, width, height, classes, split=slice(None, None), transforms=None):
+    def __init__(self, dir_path, classes, split=slice(None, None), transforms=None):
         self.transforms = transforms
         # self.dir_path = dir_path
         self.img_path = os.path.join(dir_path, 'images')
         self.annot_path = os.path.join(dir_path, 'annotations/xmls')
-        self.height = height
-        self.width = width
+        # self.height = height
+        # self.width = width
         self.classes = classes
         
         # get all the image paths in sorted order
@@ -43,9 +43,11 @@ class CustomDataset(Dataset):
         image = cv2.imread(image_path)
         # convert BGR to RGB color format
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32)
-        y_crop = int(image.shape[0]*0.4)
-        image_cropped = image[y_crop:, :]
-        image_resized = cv2.resize(image_cropped, (self.width, self.height))
+        # y_crop = int(image.shape[0]*0.4)
+        y_crop = 0
+        # image_cropped = image[y_crop:, :]
+        # image_resized = cv2.resize(image_cropped, (self.width, self.height))
+        image_resized = image
         image_resized /= 255.0
         
         # capture the corresponding XML file for getting the annotations
@@ -78,12 +80,12 @@ class CustomDataset(Dataset):
             
             # resize the bounding boxes according to the...
             # ... desired `width`, `height`
-            xmin_final = (xmin/image_width)*self.width
-            xmax_final = (xmax/image_width)*self.width
-            ymin_final = (ymin/image_height)*self.height
-            ymax_final = (ymax/image_height)*self.height
+            # xmin_final = (xmin/image_width)*self.width
+            # xmax_final = (xmax/image_width)*self.width
+            # ymin_final = (ymin/image_height)*self.height
+            # ymax_final = (ymax/image_height)*self.height
             
-            boxes.append([xmin_final, ymin_final, xmax_final, ymax_final])
+            boxes.append([xmin, ymin, xmax, ymax])
         
         # bounding box to tensor
         boxes = torch.as_tensor(boxes, dtype=torch.float32).reshape(-1,4)
@@ -101,8 +103,7 @@ class CustomDataset(Dataset):
         target["area"] = area
         target["iscrowd"] = iscrowd
         target["image_id"] = torch.tensor(idx)
-        # target["im_shape"] = image.shape[:2]
-        # target["y_crop"] = y_crop
+
         # apply the image transforms
         if self.transforms:
             sample = self.transforms(image = image_resized,
@@ -149,14 +150,14 @@ class CustomDataset(Dataset):
         return len(self.all_images)
 # prepare the final datasets and data loaders
 def create_train_dataset():
-    # train_dataset = CustomDataset(TRAIN_DIR, IM_WIDTH, IM_HEIGHT, CLASSES,  slice(50, 250),get_train_transform())
-    train_dataset = CustomDataset(TRAIN_DIR, IM_WIDTH, IM_HEIGHT, CLASSES,  slice(816, None),get_train_transform())
-    # train_dataset = CustomDataset(TRAIN_DIR, IM_WIDTH, IM_HEIGHT, CLASSES,  slice(0, None),get_train_transform())
+    # train_dataset = CustomDataset(TRAIN_DIR, CLASSES,  slice(50, 250),get_train_transform())
+    # train_dataset = CustomDataset(TRAIN_DIR, CLASSES,  slice(816, None),get_train_transform())
+    train_dataset = CustomDataset(TRAIN_DIR, CLASSES,  slice(0, None),get_train_transform())
     return train_dataset
 
 def create_valid_dataset():
-    # valid_dataset = CustomDataset(VALID_DIR, IM_WIDTH, IM_HEIGHT, CLASSES, slice(0, 50), get_valid_transform())
-    valid_dataset = CustomDataset(VALID_DIR, IM_WIDTH, IM_HEIGHT, CLASSES, slice(0, 816), get_valid_transform())
+    # valid_dataset = CustomDataset(VALID_DIR, CLASSES, slice(0, 50), get_valid_transform())
+    valid_dataset = CustomDataset(VALID_DIR, CLASSES, slice(0, 816), get_valid_transform())
     return valid_dataset
 
 def create_train_loader(train_dataset, num_workers=0):
@@ -185,7 +186,7 @@ def create_valid_loader(valid_dataset, num_workers=0, batch_size=None):
 if __name__ == '__main__':
     # sanity check of the Dataset pipeline with sample visualization
     dataset = CustomDataset(
-        TRAIN_DIR, IM_WIDTH, IM_HEIGHT, CLASSES
+        TRAIN_DIR, CLASSES
     )
     print(f"Number of training images: {len(dataset)}")
     

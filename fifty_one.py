@@ -1,8 +1,9 @@
+import cv2
 import fiftyone as fo
-from config import IM_HEIGHT as h, IM_WIDTH as w, CLASSES
+from config import CLASSES
 
 # A name for the dataset
-name = "my-dataset"
+# name = "my-dataset"
 # The directory containing the dataset to import
 dataset_dir = "data/test/train"
 # dataset_dir = "data/test/validation"
@@ -15,7 +16,7 @@ dataset = fo.Dataset.from_dir(
     data_path=f'{dataset_dir}/images',
     labels_path=f'{dataset_dir}/annotations/xmls',
     dataset_type=dataset_type,
-    name=name
+    # name=name
 )
 
 # View summary info about the dataset
@@ -24,7 +25,7 @@ print(dataset.default_classes)
 
 predictions_view = dataset.view()
 
-with open('predictions.txt', 'r') as f:
+with open('predictions1.txt', 'r') as f:
       pred_lines = f.readlines()
 
 predictions = {}
@@ -37,6 +38,8 @@ for sample in predictions_view:
     prediction = predictions.get(image_name)
     if prediction is None: continue
     prediction = prediction.strip().split(' ')
+
+    h,w = cv2.imread(sample.filepath).shape[:2]
 
     if len(prediction) < 5:
          continue

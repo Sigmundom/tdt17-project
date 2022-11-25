@@ -1,7 +1,7 @@
 import cv2
 import glob as glob
 import numpy as np
-from config import CLASSES, IM_HEIGHT, VALID_DIR
+from config import CLASSES, VALID_DIR
 from xml.etree import ElementTree as et
 
 def _explore_dims(loader):

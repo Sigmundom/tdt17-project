@@ -1,20 +1,16 @@
 from config import (
-    DEVICE, NUM_CLASSES, NUM_EPOCHS, OUT_DIR,
-    VISUALIZE_TRANSFORMED_IMAGES, NUM_WORKERS,
+    create_model, DEVICE, NUM_EPOCHS, OUT_DIR, NUM_WORKERS,
 )
 from evaluate import evaluate
-from model import create_model
-from custom_utils import Averager, SaveBestModel, get_valid_transform, save_model#, save_loss_plot
+from custom_utils import Averager, SaveBestModel, save_model#, save_loss_plot
 from tqdm.auto import tqdm
 from datasets import (
     create_train_dataset, create_valid_dataset, 
     create_train_loader, create_valid_loader
 )
 import torch
-# import matplotlib.pyplot as plt
 import time
 from os import getcwd, path, makedirs
-# plt.style.use('ggplot')
 
 
 # function for running training iterations
@@ -83,9 +79,13 @@ if __name__ == '__main__':
     print(f"Number of training samples: {len(train_dataset)}")
     print(f"Number of validation samples: {len(valid_dataset)}\n")
     # initialize the model and move to the computation device
-    model = create_model(num_classes=NUM_CLASSES)
-    checkpoint = torch.load('outputs/last_model.pth', map_location=DEVICE)
-    model.load_state_dict(checkpoint['model_state_dict'])
+    model = create_model()
+    last_model = f'{OUT_DIR}/last_model.pth'
+    checkpoint = None
+    if path.exists(last_model):
+        checkpoint = torch.load(last_model, map_location=DEVICE)
+        model.load_state_dict(checkpoint['model_state_dict'])
+        
     model.to(DEVICE)
     # get the model parameters
     params = [p for p in model.parameters() if p.requires_grad]
@@ -100,21 +100,16 @@ if __name__ == '__main__':
     # train and validation loss lists to store loss values of all...
     # ... iterations till ena and plot graphs for all iterations
     train_loss_list = []
-    val_loss_list = []
-    # name to save the trained model with
-    MODEL_NAME = 'model'
-    # whether to show transformed images from data loader or not
-    # if VISUALIZE_TRANSFORMED_IMAGES:
-    #     from custom_utils import show_tranformed_image
-    #     show_tranformed_image(train_loader)
+
     
     if not path.isdir(OUT_DIR):
         makedirs(OUT_DIR)
     # initialize SaveBestModel class
     save_best_model = SaveBestModel()
     
+    start = 0 if checkpoint is None else checkpoint['epoch']
     # start the training epochs
-    for epoch in range(checkpoint['epoch'], NUM_EPOCHS):
+    for epoch in range(start, NUM_EPOCHS):
     # for epoch in range(0, NUM_EPOCHS):
         print(f"\nEPOCH {epoch+1} of {NUM_EPOCHS}")
         # reset the training and validation loss histories for the current epoch

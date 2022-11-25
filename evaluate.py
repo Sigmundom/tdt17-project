@@ -1,12 +1,10 @@
-from config import DEVICE, IM_HEIGHT, IM_WIDTH
+from config import DEVICE
 import torch
-import torchvision
 import tqdm
 import numpy as np
 from bbox_utils import bbox_ltrb_to_ltwh
 from pycocotools.cocoeval import COCOeval
 from pycocotools.coco import COCO
-from utils import apply_nms
 
 def get_device() -> torch.device:
     return torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")

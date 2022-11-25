@@ -1,9 +1,10 @@
+from os import mkdir, path
 import albumentations as A
 import cv2
 import numpy as np
 import torch
 from albumentations.pytorch import ToTensorV2
-from config import DEVICE, CLASSES
+from config import DEVICE, CLASSES, OUT_DIR
 
 # this class keeps track of the training and validation loss values...
 # ... and helps to get the average for each epoch as well
@@ -46,13 +47,15 @@ class SaveBestModel:
     ):
         if current_f1_score > self.best_f1_score:
             self.best_f1_score = current_f1_score
+            if not path.isdir(OUT_DIR):
+                mkdir(OUT_DIR)
             print(f"\nBest F1 score: {self.best_f1_score}")
             print(f"\nSaving best model for epoch: {epoch+1}\n")
             torch.save({
                 'epoch': epoch+1,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
-                }, 'outputs/best_model.pth')
+                }, f'{OUT_DIR}/best_model.pth')
 
 
 
