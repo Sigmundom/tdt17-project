@@ -40,7 +40,7 @@ def evaluate(
             predictions = model(images)
             # , nms_iou_threshold=0.50, max_output=200, score_threshold=0.05)
         for prediction, target in zip(predictions, targets):
-            prediction = apply_nms(prediction, 0.3)
+            # prediction = apply_nms(prediction, 0.3)
             boxes_ltrb = prediction['boxes']
             categories = prediction['labels']
             scores = prediction['scores']

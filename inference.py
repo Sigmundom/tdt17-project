@@ -32,6 +32,9 @@ for i in range(len(test_images)):
     image = cv2.imread(test_images[i])
     # BGR to RGB
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32)
+    y_crop = int(image.shape[0]*0.4)
+    im_h, im_w = image.shape[:2]
+    image = image[y_crop:, :]
     image = cv2.resize(image, (IM_WIDTH, IM_HEIGHT))
     # make the pixel range between 0 and 1
     image /= 255.0
@@ -47,7 +50,6 @@ for i in range(len(test_images)):
         
     outputs = [apply_nms(output, 0.3) for output in outputs]
     outputs = [{k: v.to('cpu') for k, v in t.items()} for t in outputs]
-    print(outputs)
     # carry further only if there are detected boxes
     if len(outputs[0]['boxes']) != 0:
         boxes = outputs[0]['boxes'].data.numpy()
@@ -68,7 +70,11 @@ for i in range(len(test_images)):
             
 
         for label, box in zip(labels, boxes):
-            pred_string += f'{label} {box[0]} {box[1]} {box[2]} {box[3]} '
+            l = int(round(box[0] / IM_WIDTH * im_w))
+            t = int(round(box[1] / IM_HEIGHT * im_h + y_crop))
+            r = int(round(box[2] / IM_WIDTH * im_w))
+            b = int(round(box[3] / IM_HEIGHT * im_h + y_crop))
+            pred_string += f'{label} {l} {t} {r} {b} '
         
         pred_string += '\n'
 
@@ -76,5 +82,5 @@ for i in range(len(test_images)):
         
     print(f"Image {i+1} done...")
 print('TEST PREDICTIONS COMPLETE')
-with open('predictions.txt', 'w') as f:
+with open('predictions1.txt', 'w') as f:
     f.writelines(pred_strings)

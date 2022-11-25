@@ -1,8 +1,5 @@
-
-
-import glob
 import cv2
-
+import glob as glob
 import numpy as np
 from config import CLASSES, IM_HEIGHT, VALID_DIR
 from xml.etree import ElementTree as et
@@ -155,9 +152,10 @@ def explore_testdata():
     print(resolutions)
 
 def explore_image_std():
+    print('Starting')
     files = glob.glob("/cluster/projects/vc/courses/TDT17/2022/open/RDD2022/Norway/train/images/*.jpg")
-
-    print(len(files))
+    print()
+    # print(len(files))
     
     mean = np.array([0.,0.,0.])
     stdTemp = np.array([0.,0.,0.])
@@ -165,8 +163,8 @@ def explore_image_std():
     
     numSamples = len(files)
     
-    for i in range(numSamples):
-        im = cv2.imread(str(files[i]))
+    for filepath in files:
+        im = cv2.imread(filepath)
         im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
         im = im.astype(float) / 255.
         
@@ -177,8 +175,8 @@ def explore_image_std():
     
     print('Mean:', mean) 
 
-    for i in range(numSamples):
-        im = cv2.imread(str(files[i]))
+    for filepath in files:
+        im = cv2.imread(filepath)
         im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
         im = im.astype(float) / 255.
         for j in range(3):
@@ -189,6 +187,7 @@ def explore_image_std():
     print('Std:', std) 
 
 if __name__ == '__main__':
-    # explore_testdata()
+    print('Come on!')
     explore_image_std()
+    # explore_testdata()
     # explore()

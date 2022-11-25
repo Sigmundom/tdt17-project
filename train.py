@@ -84,13 +84,14 @@ if __name__ == '__main__':
     print(f"Number of validation samples: {len(valid_dataset)}\n")
     # initialize the model and move to the computation device
     model = create_model(num_classes=NUM_CLASSES)
-    # checkpoint = torch.load('outputs/last_model.pth', map_location=DEVICE)
-    # model.load_state_dict(checkpoint['model_state_dict'])
+    checkpoint = torch.load('outputs/last_model.pth', map_location=DEVICE)
+    model.load_state_dict(checkpoint['model_state_dict'])
     model.to(DEVICE)
     # get the model parameters
     params = [p for p in model.parameters() if p.requires_grad]
     # define the optimizer
-    optimizer = torch.optim.SGD(params, lr=0.005, momentum=0.9, weight_decay=0.0005)
+    optimizer = torch.optim.SGD(params, lr=0.0075, momentum=0.9, weight_decay=0.0005)
+    # optimizer = torch.optim.Adam(params, lr=0.002, weight_decay=0.0005)
     # initialize the Averager class
     train_loss_hist = Averager()
     val_loss_hist = Averager()
@@ -113,8 +114,8 @@ if __name__ == '__main__':
     save_best_model = SaveBestModel()
     
     # start the training epochs
-    # for epoch in range(checkpoint['epoch'], NUM_EPOCHS):
-    for epoch in range(0, NUM_EPOCHS):
+    for epoch in range(checkpoint['epoch'], NUM_EPOCHS):
+    # for epoch in range(0, NUM_EPOCHS):
         print(f"\nEPOCH {epoch+1} of {NUM_EPOCHS}")
         # reset the training and validation loss histories for the current epoch
         train_loss_hist.reset()
@@ -128,11 +129,11 @@ if __name__ == '__main__':
         print(f'F1 score: {stats["F1"]}')  
         # print(f"Epoch #{epoch+1} validation loss: {val_loss_hist.value:.3f}")   
         end = time.time()
-        print(f"Took {((end - start) / 60):.3f} minutes for epoch {epoch}")
+        print(f"Took {((end - start) / 60):.3f} minutes for epoch {epoch+1}")
         # save the best model till now if we have the least loss in the...
         # ... current epoch
         save_best_model(
-            val_loss_hist.value, epoch, model, optimizer
+            stats['F1'], epoch, model, optimizer
         )
         # save the current epoch model
         save_model(epoch, model, optimizer)

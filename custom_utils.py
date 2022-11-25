@@ -67,11 +67,11 @@ def collate_fn(batch):
 # define the training tranforms
 def get_train_transform():
     return A.Compose([
-        A.Flip(0.5),
-        # A.RandomRotate90(0.5),
-        # A.MotionBlur(p=0.2),
-        # A.MedianBlur(blur_limit=3, p=0.1),
-        # A.Blur(blur_limit=3, p=0.1),
+        A.HorizontalFlip(0.5),
+        A.ColorJitter (brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2, always_apply=False, p=0.2),
+        A.RandomBrightnessContrast(p=0.2),
+        A.MedianBlur(blur_limit=3, p=0.1),
+        A.Blur(blur_limit=3, p=0.1),
         ToTensorV2(p=1.0),
     ], bbox_params={
         'format': 'pascal_voc',

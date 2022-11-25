@@ -3,7 +3,7 @@
 #SBATCH --account=ie-idi
 #SBATCH --time=06:00:00
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=8
+#SBATCH --ntasks-per-node=4
 #SBATCH --mem=12000
 #SBATCH --job-name="train"
 #SBATCH --output=train.out
