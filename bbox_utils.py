@@ -1,10 +1,6 @@
-
-
 from typing import Union
 import numpy as np
-
 import torch
-
 
 def bbox_ltrb_to_ltwh(boxes_ltrb: Union[np.ndarray, torch.Tensor]):
     cat = torch.cat if isinstance(boxes_ltrb, torch.Tensor) else np.concatenate

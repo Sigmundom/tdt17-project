@@ -6,3 +6,4 @@ inference_output/
 
 *.slurm
 *.out
+*.txt

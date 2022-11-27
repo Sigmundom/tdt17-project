@@ -71,10 +71,9 @@ def collate_fn(batch):
 def get_train_transform():
     return A.Compose([
         A.HorizontalFlip(0.5),
-        A.ColorJitter (brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2, always_apply=False, p=0.2),
-        A.RandomBrightnessContrast(p=0.2),
-        A.MedianBlur(blur_limit=3, p=0.1),
-        A.Blur(blur_limit=3, p=0.1),
+        # A.ColorJitter (brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2, always_apply=False, p=0.2),
+        # A.RandomBrightnessContrast(p=0.2),
+        # A.Blur(blur_limit=1, p=0.2),
         ToTensorV2(p=1.0),
     ], bbox_params={
         'format': 'pascal_voc',
@@ -125,7 +124,7 @@ def save_model(epoch, model, optimizer):
                 'epoch': epoch+1,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
-                }, 'outputs/last_model.pth')
+                }, f'{OUT_DIR}/last_model.pth')
                 
 # def save_loss_plot(OUT_DIR, train_loss, val_loss):
 #     figure_1, train_ax = plt.subplots()

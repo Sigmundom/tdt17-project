@@ -1,8 +1,10 @@
 import cv2
 import glob as glob
 import numpy as np
-from config import CLASSES, VALID_DIR
+from config import CLASSES, VALID_DIR, NUM_WORKERS
 from xml.etree import ElementTree as et
+from tqdm.auto import tqdm
+from datasets import create_train_dataset, create_train_loader
 
 def _explore_dims(loader):
     max_im_height = 0
@@ -12,7 +14,7 @@ def _explore_dims(loader):
 
     sum_im_height = 0
     sum_im_width = 0
-    
+
     for target in loader:
         h, w = target['im_shape']
 
@@ -27,7 +29,7 @@ def _explore_dims(loader):
         sum_im_height += h
         sum_im_width += w
 
-    
+
     print('Max height:', max_im_height)
     print('Max width:', max_im_width)
     print('Min height:', min_im_height)
@@ -81,19 +83,19 @@ def explore():
         labels = []
         tree = et.parse(annot_file_path)
         root = tree.getroot()
-        
+
         # get the height and width of the image
         size = root.find('size')
         image_width = int(size.find('width').text)
         image_height = int(size.find('height').text)
-        
+
         # box coordinates for xml files are extracted and corrected for image size given
         for member in root.findall('object'):
             # map the current object name to `classes` list to get...
             # ... the label index and append to `labels` list
-            
+
             labels.append(CLASSES.index(member.find('name').text))
-            
+
             # xmin = left corner x-coordinates
             xmin = float(member.find('bndbox').find('xmin').text)
             # xmax = right corner x-coordinates
@@ -102,16 +104,16 @@ def explore():
             ymin = float(member.find('bndbox').find('ymin').text)
             # ymax = right corner y-coordinates
             ymax = float(member.find('bndbox').find('ymax').text)
-            
+
             # resize the bounding boxes according to the...
             # ... desired `width`, `height`
             xmin_final = (xmin/image_width)
             xmax_final = (xmax/image_width)
             ymin_final = (ymin/image_height)
             yamx_final = (ymax/image_height)
-            
+
             boxes.append([xmin_final, ymin_final, xmax_final, yamx_final])
-    
+
         target = {}
         target["boxes"] = boxes
         target["labels"] = labels
@@ -119,7 +121,7 @@ def explore():
 
         target["im_shape"] = (image_height, image_width)
 
-            
+
         annotations.append(target)
 
     print('Number of samples:', len(annotations))
@@ -153,32 +155,33 @@ def explore_testdata():
 
 def explore_image_std():
     print('Starting')
-    files = glob.glob("/cluster/projects/vc/courses/TDT17/2022/open/RDD2022/Norway/train/images/*.jpg")
-    print()
-    # print(len(files))
-    
+    # files = glob.glob("/cluster/projects/vc/courses/TDT17/2022/open/RDD2022/Norway/train/images/*.jpg")
+    # print()
+    train_dataset = create_train_dataset()
+    loader = create_train_loader(train_dataset, 4, batch_size=1)
+
     mean = np.array([0.,0.,0.])
     stdTemp = np.array([0.,0.,0.])
     std = np.array([0.,0.,0.])
-    
-    numSamples = len(files)
-    
-    for filepath in files:
-        im = cv2.imread(filepath)
-        im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
-        im = im.astype(float) / 255.
-        
+
+    numSamples = len(loader)
+
+    for images, _ in tqdm(loader, total=len(loader), miniters=len(loader)/100):
+        im = images[0]
+        # im = cv2.imread(filepath)
+        # im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
+        # im = im.astype(float) / 255.
+
         for j in range(3):
             mean[j] += np.mean(im[:,:,j])
 
     mean = (mean/numSamples)
-    
+
     print('Mean:', mean) 
 
-    for filepath in files:
-        im = cv2.imread(filepath)
-        im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
-        im = im.astype(float) / 255.
+    for images, _ in tqdm(loader, total=len(loader), miniters=len(loader)/100):
+        im = images[0]
+
         for j in range(3):
             stdTemp[j] += ((im[:,:,j] - mean[j])**2).sum()/(im.shape[0]*im.shape[1])
 

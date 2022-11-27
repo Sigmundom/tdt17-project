@@ -7,20 +7,20 @@ import glob as glob
 from xml.etree import ElementTree as et
 from pycocotools.coco import COCO
 from config import (
-    CLASSES, DATA_BLACKLIST, TRAIN_DIR, VALID_DIR, BATCH_SIZE
+    CLASSES, DATA_BLACKLIST, TRAIN_DIR, VALID_DIR, BATCH_SIZE, TRAIN_DIR_INDIA, TRAIN_DIR_JAPAN, TRAIN_DIR_US
 )
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, ConcatDataset
 from custom_utils import collate_fn, get_train_transform, get_valid_transform
 # the dataset class
 class CustomDataset(Dataset):
-    def __init__(self, dir_path, classes, split=slice(None, None), transforms=None):
+    def __init__(self, dir_path, split=slice(None, None), transforms=None):
         self.transforms = transforms
         # self.dir_path = dir_path
         self.img_path = os.path.join(dir_path, 'images')
         self.annot_path = os.path.join(dir_path, 'annotations/xmls')
         # self.height = height
         # self.width = width
-        self.classes = classes
+        self.classes = CLASSES
         
         # get all the image paths in sorted order
         self.image_paths = glob.glob(f"{self.img_path}/*.jpg")[split]
@@ -31,7 +31,7 @@ class CustomDataset(Dataset):
                 self.all_images.remove(item)
                 print('Removed blacklisted item:', item)
             except ValueError:
-                print(f"Tried to remove {item}, but couldn't find it")
+                pass
 
         self.all_images = sorted(self.all_images)
     
@@ -44,7 +44,6 @@ class CustomDataset(Dataset):
         # convert BGR to RGB color format
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB).astype(np.float32)
         # y_crop = int(image.shape[0]*0.4)
-        y_crop = 0
         # image_cropped = image[y_crop:, :]
         # image_resized = cv2.resize(image_cropped, (self.width, self.height))
         image_resized = image
@@ -60,23 +59,26 @@ class CustomDataset(Dataset):
         root = tree.getroot()
         
         # get the height and width of the image
-        image_width = image.shape[1]
-        image_height = image.shape[0] - y_crop
+        # image_width = image.shape[1]
+        # image_height = image.shape[0] 
         
         # box coordinates for xml files are extracted and corrected for image size given
         for member in root.findall('object'):
             # map the current object name to `classes` list to get...
             # ... the label index and append to `labels` list
-            labels.append(self.classes.index(member.find('name').text))
+            label = member.find('name').text
+            if label not in self.classes:
+                continue
+            labels.append(self.classes.index(label))
             
             # xmin = left corner x-coordinates
             xmin = float(member.find('bndbox').find('xmin').text)
             # xmax = right corner x-coordinates
             xmax = float(member.find('bndbox').find('xmax').text)
             # ymin = left corner y-coordinates
-            ymin = float(member.find('bndbox').find('ymin').text) - y_crop
+            ymin = float(member.find('bndbox').find('ymin').text)
             # ymax = right corner y-coordinates
-            ymax = float(member.find('bndbox').find('ymax').text) - y_crop
+            ymax = float(member.find('bndbox').find('ymax').text)
             
             # resize the bounding boxes according to the...
             # ... desired `width`, `height`
@@ -106,11 +108,23 @@ class CustomDataset(Dataset):
 
         # apply the image transforms
         if self.transforms:
-            sample = self.transforms(image = image_resized,
-                                     bboxes = target['boxes'],
-                                     labels = labels)
-            image_resized = sample['image']
-            target['boxes'] = torch.Tensor(sample['bboxes']).reshape(-1,4)
+            try:
+                sample = self.transforms(image = image_resized,
+                                        bboxes = target['boxes'],
+                                        labels = labels)
+                image_resized = sample['image']
+                target['boxes'] = torch.Tensor(sample['bboxes']).reshape(-1,4)
+            except ValueError:
+                print('Transform failed for image ', image_name)
+                for i, box in enumerate(boxes):
+                    if abs(box[0] - box[2]) <=1:
+                        target['boxes'] = [x for idx, x in enumerate(boxes) if idx != i]
+                        labels = [x for idx, x in enumerate(labels) if idx != i]
+                sample = self.transforms(image = image_resized,
+                                        bboxes = target['boxes'],
+                                        labels = labels)
+                image_resized = sample['image']
+                target['boxes'] = torch.Tensor(sample['bboxes']).reshape(-1,4)
             
         return image_resized, target
 
@@ -126,10 +140,11 @@ class CustomDataset(Dataset):
         ann_id = 1
         for idx in range(len(self)):
             # image_id = idx
-            _, target = self.__getitem__(idx)
+            image, target = self.__getitem__(idx)
             boxes_ltrb  = target['boxes']
             boxes_ltwh = bbox_ltrb_to_ltwh(boxes_ltrb)
-            coco_anns["images"].append({"id": int(target['image_id']), "height": self.height, "width": self.width })
+            height, width = image.shape[:2]
+            coco_anns["images"].append({"id": int(target['image_id']), "height": height, "width": width })
             for box, label in zip(boxes_ltwh, target['labels']):
                 box = box.tolist()
                 area = box[-1] * box[-2]
@@ -150,20 +165,21 @@ class CustomDataset(Dataset):
         return len(self.all_images)
 # prepare the final datasets and data loaders
 def create_train_dataset():
-    # train_dataset = CustomDataset(TRAIN_DIR, CLASSES,  slice(50, 250),get_train_transform())
-    # train_dataset = CustomDataset(TRAIN_DIR, CLASSES,  slice(816, None),get_train_transform())
-    train_dataset = CustomDataset(TRAIN_DIR, CLASSES,  slice(0, None),get_train_transform())
+    train_dataset_norway = CustomDataset(TRAIN_DIR,  slice(1000, None),get_train_transform())
+    train_dataset_japan = CustomDataset(TRAIN_DIR_JAPAN, slice(0, None), get_train_transform())
+    train_dataset_india = CustomDataset(TRAIN_DIR_INDIA, slice(0, None), get_train_transform())
+    train_dataset_us = CustomDataset(TRAIN_DIR_US, slice(0, None), get_train_transform())
+    train_dataset = ConcatDataset([train_dataset_norway, train_dataset_japan, train_dataset_india, train_dataset_us])
     return train_dataset
 
 def create_valid_dataset():
-    # valid_dataset = CustomDataset(VALID_DIR, CLASSES, slice(0, 50), get_valid_transform())
-    valid_dataset = CustomDataset(VALID_DIR, CLASSES, slice(0, 816), get_valid_transform())
+    valid_dataset = CustomDataset(VALID_DIR, slice(0, 1000), get_valid_transform())
     return valid_dataset
 
-def create_train_loader(train_dataset, num_workers=0):
+def create_train_loader(train_dataset, num_workers=0, batch_size=None):
     train_loader = DataLoader(
         train_dataset,
-        batch_size=BATCH_SIZE,
+        batch_size=BATCH_SIZE if batch_size is None else batch_size,
         shuffle=True,
         num_workers=num_workers,
         collate_fn=collate_fn

@@ -1,14 +1,14 @@
 #!/bin/sh
-#SBATCH --partition=short
+#SBATCH --partition=GPUQ
 #SBATCH --account=ie-idi
-#SBATCH --time=00:10:00
+#SBATCH --time=01:00:00
 #SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1
+#SBATCH --ntasks-per-node=2
 #SBATCH --mem=12000
 #SBATCH --job-name="inference"
 #SBATCH --output=inference.out
 #SBATCH --mail-user=sigmunom@stud.ntnu.no
-#SBATCH --mail-type=ALL
+#SBATCH --mail-type=END
 #SBATCH --gres=gpu:1
 
 WORKDIR=${SLURM_SUBMIT_DIR}
@@ -23,8 +23,10 @@ echo "We are using $SLURM_CPUS_ON_NODE cores per node"
 echo "Total of $SLURM_NTASKS cores"
 
 module purge
+echo "Loading anaconda"
 module load Anaconda3/2020.07
 
+echo "Launching script"
 python inference.py
 
 uname -a

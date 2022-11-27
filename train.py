@@ -1,5 +1,5 @@
 from config import (
-    create_model, DEVICE, NUM_EPOCHS, OUT_DIR, NUM_WORKERS,
+    create_model, create_optimizer, DEVICE, NUM_EPOCHS, OUT_DIR, NUM_WORKERS,
 )
 from evaluate import evaluate
 from custom_utils import Averager, SaveBestModel, save_model#, save_loss_plot
@@ -20,7 +20,7 @@ def train(train_data_loader, model):
     global train_loss_list
     
      # initialize tqdm progress bar
-    prog_bar = tqdm(train_data_loader, total=len(train_data_loader), miniters=(len(train_data_loader)//100))
+    prog_bar = tqdm(train_data_loader, total=len(train_data_loader), mininterval=15, maxinterval=30)
     
     for i, data in enumerate(prog_bar):
         optimizer.zero_grad()
@@ -78,9 +78,13 @@ if __name__ == '__main__':
     valid_loader = create_valid_loader(valid_dataset, NUM_WORKERS)
     print(f"Number of training samples: {len(train_dataset)}")
     print(f"Number of validation samples: {len(valid_dataset)}\n")
+
+    cocoGt = valid_loader.dataset.get_annotations_as_coco()
+
     # initialize the model and move to the computation device
     model = create_model()
-    last_model = f'{OUT_DIR}/last_model.pth'
+    last_model = 'outputs/resnet_final/best_model.pth'
+    # last_model = f'{OUT_DIR}/last_model.pth'
     checkpoint = None
     if path.exists(last_model):
         checkpoint = torch.load(last_model, map_location=DEVICE)
@@ -90,8 +94,7 @@ if __name__ == '__main__':
     # get the model parameters
     params = [p for p in model.parameters() if p.requires_grad]
     # define the optimizer
-    optimizer = torch.optim.SGD(params, lr=0.0075, momentum=0.9, weight_decay=0.0005)
-    # optimizer = torch.optim.Adam(params, lr=0.002, weight_decay=0.0005)
+    optimizer = create_optimizer(params)
     # initialize the Averager class
     train_loss_hist = Averager()
     val_loss_hist = Averager()
@@ -100,7 +103,6 @@ if __name__ == '__main__':
     # train and validation loss lists to store loss values of all...
     # ... iterations till ena and plot graphs for all iterations
     train_loss_list = []
-
     
     if not path.isdir(OUT_DIR):
         makedirs(OUT_DIR)
@@ -119,7 +121,7 @@ if __name__ == '__main__':
         start = time.time()
         train_loss = train(train_loader, model)
         # val_loss = validate(valid_loader, model)
-        stats = evaluate(model, valid_loader, valid_loader.dataset.get_annotations_as_coco())
+        stats = evaluate(model, valid_loader, cocoGt)
         print(f"Epoch #{epoch+1} train loss: {train_loss_hist.value:.3f}") 
         print(f'F1 score: {stats["F1"]}')  
         # print(f"Epoch #{epoch+1} validation loss: {val_loss_hist.value:.3f}")   
